@@ -351,7 +351,7 @@ export function PublicLandingPage() {
                 loop
                 muted
                 playsInline
-                poster="/images/dark-mirror.webp"
+                poster="https://wfkplqgufdaxnczvyhpn.supabase.co/storage/v1/object/public/assets/dark-mirror.webp"
                 className="relative w-full max-w-[360px] sm:max-w-[420px]"
                 style={{
                   border: `2px solid ${C.line}`,
@@ -360,7 +360,7 @@ export function PublicLandingPage() {
               >
                 <source src="https://wfkplqgufdaxnczvyhpn.supabase.co/storage/v1/object/public/assets/hero-video.mp4" type="video/mp4" />
                 <img
-                  src="/images/dark-mirror.webp"
+                  src="https://wfkplqgufdaxnczvyhpn.supabase.co/storage/v1/object/public/assets/dark-mirror.webp"
                   alt="Тёмное зеркало"
                   className="w-full"
                 />
@@ -414,7 +414,7 @@ export function PublicLandingPage() {
             {/* Phone scan image */}
             <div className="flex justify-center">
               <img
-                src="/images/phone-scan.webp"
+                src="https://wfkplqgufdaxnczvyhpn.supabase.co/storage/v1/object/public/assets/phone-scan.webp"
                 alt="Проверка"
                 className="w-full max-w-[300px]"
                 style={{
@@ -529,7 +529,7 @@ export function PublicLandingPage() {
 
           <div className="flex justify-center mb-10">
             <img
-              src="/images/before-after.webp"
+              src="https://wfkplqgufdaxnczvyhpn.supabase.co/storage/v1/object/public/assets/before-after.webp"
               alt="До и после"
               className="w-full max-w-[500px]"
               style={{
