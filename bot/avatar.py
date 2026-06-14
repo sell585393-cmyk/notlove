@@ -135,7 +135,7 @@ async def generate_avatar(
                     "image": ("photo.jpg", photo_bytes, "image/jpeg"),
                 }
                 data = {
-                    "model": "gpt-image-1",
+                    "model": "gpt-image-2",
                     "prompt": prompt,
                     "size": "1024x1536",  # 2:3 портрет
                     "quality": "medium",
@@ -155,7 +155,7 @@ async def generate_avatar(
                     "https://api.openai.com/v1/images/generations",
                     headers=headers,
                     json={
-                        "model": "gpt-image-1",
+                        "model": "gpt-image-2",
                         "prompt": prompt,
                         "size": "1024x1536",
                         "quality": "medium",
@@ -167,7 +167,7 @@ async def generate_avatar(
                 return None
 
             result = resp.json()
-            # gpt-image-1 returns base64 by default
+            # gpt-image-2 returns base64 by default
             b64_data = result["data"][0].get("b64_json")
             if b64_data:
                 return base64.b64decode(b64_data)
