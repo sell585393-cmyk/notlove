@@ -150,10 +150,13 @@ async def handle_weakness_toggle(callback: CallbackQuery, state: FSMContext) -> 
         archetype_data = ARCHETYPES.get(archetype_id, ARCHETYPES["slug"])
         db.update_user(tg_id, archetype=archetype_id, state="ready")
 
-        # Генерируем пиксельного аватара
+        # Генерируем пиксельного аватара через GPT-5.5 vision
         try:
+            photo_data = data.get("photo_bytes")
+            await callback.message.answer("⏳ Рисую твоего двойника... (~1 мин)")
             weakness_labels = [WEAKNESSES[w]["label"] for w in weakness_list if w in WEAKNESSES]
             png_bytes, metadata = await generate_avatar(
+                photo_bytes=photo_data,
                 archetype=archetype_id,
                 weaknesses=weakness_labels,
                 day=0,
