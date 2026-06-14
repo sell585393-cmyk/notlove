@@ -210,10 +210,10 @@ async def handle_weakness_toggle(callback: CallbackQuery, state: FSMContext) -> 
     # Переключаем слабость
     if action in selected:
         selected.discard(action)
-    elif len(selected) < 3:
+    elif len(selected) < 6:
         selected.add(action)
     else:
-        await callback.answer("Максимум 3 слабости")
+        await callback.answer("Максимум 6 слабостей")
         return
 
     await state.update_data(selected_weaknesses=selected)
