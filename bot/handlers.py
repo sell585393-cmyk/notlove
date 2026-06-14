@@ -6,7 +6,7 @@ import logging
 from typing import Any
 
 from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery, ContentType
+from aiogram.types import Message, CallbackQuery, ContentType, BufferedInputFile
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -29,8 +29,7 @@ from texts import (
     progress_bar, get_motivation,
 )
 import db
-from avatar import request_avatar, poll_avatar, download_avatar, determine_archetype
-from config import WEAKNESSES as WEAKNESSES_CONFIG
+from avatar import generate_avatar, determine_archetype
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -150,44 +149,6 @@ async def handle_weakness_toggle(callback: CallbackQuery, state: FSMContext) -> 
         archetype_data = ARCHETYPES.get(archetype_id, ARCHETYPES["slug"])
         db.update_user(tg_id, archetype=archetype_id, state="ready")
 
-        # Запрос генерации аватара через Viktor (GPT Image 2)
-        try:
-            weakness_labels = [WEAKNESSES[w]["label"] for w in weakness_list if w in WEAKNESSES]
-            request_avatar(
-                tg_id=tg_id,
-                archetype=archetype_id,
-                weaknesses=weakness_labels,
-            )
-            status_msg = await callback.message.answer(
-                "⏳ Рисую твоего двойника... Это займёт до 2 минут."
-            )
-
-            # Ждём завершения генерации (поллим Supabase)
-            avatar_url = await poll_avatar(tg_id, timeout=180, interval=5)
-
-            if avatar_url:
-                avatar_bytes = await download_avatar(avatar_url)
-                if avatar_bytes:
-                    from aiogram.types import BufferedInputFile
-                    await callback.message.answer_photo(
-                        BufferedInputFile(avatar_bytes, filename="avatar.png"),
-                        caption="Вот он — твой пиксельный двойник. Диагноз, не портрет.",
-                    )
-                else:
-                    await callback.message.answer(
-                        "Аватар создан, но не удалось загрузить. Посмотри в «Мой персонаж»."
-                    )
-            else:
-                await callback.message.answer(
-                    "Генерация занимает дольше обычного. "
-                    "Аватар появится позже — проверь через «👤 Мой персонаж»."
-                )
-        except Exception as e:
-            logger.error(f"Ошибка запроса аватара: {e}")
-            await callback.message.answer(
-                "Не удалось создать аватар, но вызов можно начать."
-            )
-
         # Формируем текст
         wlist = "\n".join(
             f"• {WEAKNESSES[w]['emoji']} {WEAKNESSES[w]['label']} — {WEAKNESSES[w]['desc']}"
@@ -203,6 +164,46 @@ async def handle_weakness_toggle(callback: CallbackQuery, state: FSMContext) -> 
             parse_mode="Markdown",
             reply_markup=confirm_start_kb(),
         )
+
+        # Генерируем аватар через OpenAI API
+        photo_bytes = data.get("photo_bytes")
+        try:
+            status_msg = await callback.message.answer(
+                "⏳ Рисую твоего двойника..."
+            )
+
+            avatar_bytes = await generate_avatar(
+                photo_bytes=photo_bytes,
+                weakness_ids=weakness_list,
+            )
+
+            if avatar_bytes:
+                # Загружаем в Supabase Storage
+                try:
+                    avatar_url = db.upload_photo_to_storage(
+                        tg_id, avatar_bytes, "avatar.png"
+                    )
+                    db.save_avatar_url(tg_id, avatar_url)
+                except Exception as e:
+                    logger.error(f"Ошибка загрузки аватара в storage: {e}")
+
+                await callback.message.answer_photo(
+                    BufferedInputFile(avatar_bytes, filename="avatar.png"),
+                    caption="Вот он — твой пиксельный двойник. Диагноз, не портрет.",
+                )
+
+                # Удаляем сообщение "Рисую..."
+                try:
+                    await status_msg.delete()
+                except Exception:
+                    pass
+            else:
+                await status_msg.edit_text(
+                    "Не удалось создать аватар. Попробуй позже через «👤 Мой персонаж»."
+                )
+        except Exception as e:
+            logger.error(f"Ошибка генерации аватара: {e}")
+
         await state.set_state(Onboarding.confirming)
         return
 
@@ -427,7 +428,7 @@ async def show_avatar(message: Message) -> None:
         return
 
     avatar_url = user.get("avatar_url")
-    if avatar_url:
+    if avatar_url and not avatar_url.startswith("pending:") and not avatar_url.startswith("error:"):
         await message.answer_photo(
             avatar_url,
             caption="Твой пиксельный двойник. Он меняется вместе с тобой.",
