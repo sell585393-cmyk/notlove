@@ -29,7 +29,7 @@ from texts import (
     progress_bar, get_motivation,
 )
 import db
-from avatar import generate_avatar, determine_archetype
+from avatar import request_avatar, poll_avatar, download_avatar, determine_archetype
 from config import WEAKNESSES as WEAKNESSES_CONFIG
 
 logger = logging.getLogger(__name__)
@@ -150,30 +150,43 @@ async def handle_weakness_toggle(callback: CallbackQuery, state: FSMContext) -> 
         archetype_data = ARCHETYPES.get(archetype_id, ARCHETYPES["slug"])
         db.update_user(tg_id, archetype=archetype_id, state="ready")
 
-        # Генерируем пиксельного аватара через GPT-5.5 vision
+        # Запрос генерации аватара через Viktor (GPT Image 2)
         try:
-            photo_data = data.get("photo_bytes")
-            await callback.message.answer("⏳ Рисую твоего двойника... (~1 мин)")
             weakness_labels = [WEAKNESSES[w]["label"] for w in weakness_list if w in WEAKNESSES]
-            png_bytes, metadata = await generate_avatar(
-                photo_bytes=photo_data,
+            request_avatar(
+                tg_id=tg_id,
                 archetype=archetype_id,
                 weaknesses=weakness_labels,
-                day=0,
+            )
+            status_msg = await callback.message.answer(
+                "⏳ Рисую твоего двойника... Это займёт до 2 минут."
             )
 
-            # Сохраняем PNG
-            avatar_url = db.upload_photo_to_storage(tg_id, png_bytes, "avatar.png")
-            db.save_avatar_url(tg_id, avatar_url)
+            # Ждём завершения генерации (поллим Supabase)
+            avatar_url = await poll_avatar(tg_id, timeout=180, interval=5)
 
-            from aiogram.types import BufferedInputFile
-            await callback.message.answer_photo(
-                BufferedInputFile(png_bytes, filename="avatar.png"),
-                caption="Вот он — твой пиксельный двойник. Диагноз, не портрет.",
-            )
+            if avatar_url:
+                avatar_bytes = await download_avatar(avatar_url)
+                if avatar_bytes:
+                    from aiogram.types import BufferedInputFile
+                    await callback.message.answer_photo(
+                        BufferedInputFile(avatar_bytes, filename="avatar.png"),
+                        caption="Вот он — твой пиксельный двойник. Диагноз, не портрет.",
+                    )
+                else:
+                    await callback.message.answer(
+                        "Аватар создан, но не удалось загрузить. Посмотри в «Мой персонаж»."
+                    )
+            else:
+                await callback.message.answer(
+                    "Генерация занимает дольше обычного. "
+                    "Аватар появится позже — проверь через «👤 Мой персонаж»."
+                )
         except Exception as e:
-            logger.error(f"Ошибка генерации аватара: {e}")
-            await callback.message.answer("Не удалось создать аватар, но вызов можно начать.")
+            logger.error(f"Ошибка запроса аватара: {e}")
+            await callback.message.answer(
+                "Не удалось создать аватар, но вызов можно начать."
+            )
 
         # Формируем текст
         wlist = "\n".join(
