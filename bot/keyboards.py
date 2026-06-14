@@ -16,6 +16,7 @@ from config import WEAKNESSES, MINI_APP_URL
 def main_menu_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
+            [KeyboardButton(text="🎮 NOTLOVE", web_app=WebAppInfo(url=MINI_APP_URL))],
             [KeyboardButton(text="📊 Мой прогресс"), KeyboardButton(text="✅ Чек-ин")],
             [KeyboardButton(text="👤 Мой персонаж"), KeyboardButton(text="⚙️ Настройки")],
         ],
@@ -59,7 +60,7 @@ def weaknesses_kb(selected: set[str] | None = None) -> InlineKeyboardMarkup:
     # Кнопка подтверждения (если выбрано хотя бы 1)
     if selected:
         rows.append([InlineKeyboardButton(
-            text=f"Готово ({len(selected)} из 3)",
+            text=f"Готово ({len(selected)} выбрано)",
             callback_data="w:done",
         )])
 
