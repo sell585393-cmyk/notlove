@@ -16,6 +16,10 @@ MINI_APP_URL = os.getenv("MINI_APP_URL", "https://notlove-me.vercel.app/app")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
 WEBHOOK_PORT = int(os.getenv("WEBHOOK_PORT", "8443"))
 
+# GPT API (freemodel.dev)
+GPT_API_KEY = os.getenv("GPT_API_KEY", "")
+GPT_API_URL = os.getenv("GPT_API_URL", "https://api.freemodel.dev")
+
 # 30-дневный вызов
 CHALLENGE_DAYS = 30
 

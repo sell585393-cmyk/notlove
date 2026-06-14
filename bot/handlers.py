@@ -30,6 +30,7 @@ from texts import (
 )
 import db
 from avatar import generate_avatar, determine_archetype
+from config import WEAKNESSES as WEAKNESSES_CONFIG
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -149,21 +150,27 @@ async def handle_weakness_toggle(callback: CallbackQuery, state: FSMContext) -> 
         archetype_data = ARCHETYPES.get(archetype_id, ARCHETYPES["slug"])
         db.update_user(tg_id, archetype=archetype_id, state="ready")
 
-        # Генерируем аватар, если есть фото
-        photo_bytes = data.get("photo_bytes")
-        if photo_bytes:
-            try:
-                avatar_png = generate_avatar(photo_bytes, weakness_list, day=0)
-                avatar_url = db.upload_photo_to_storage(tg_id, avatar_png, "avatar.png")
-                db.save_avatar_url(tg_id, avatar_url)
+        # Генерируем пиксельного аватара
+        try:
+            weakness_labels = [WEAKNESSES[w]["label"] for w in weakness_list if w in WEAKNESSES]
+            png_bytes, metadata = await generate_avatar(
+                archetype=archetype_id,
+                weaknesses=weakness_labels,
+                day=0,
+            )
 
-                from aiogram.types import BufferedInputFile
-                await callback.message.answer_photo(
-                    BufferedInputFile(avatar_png, filename="avatar.png"),
-                    caption="Вот он — твой пиксельный двойник. Диагноз, не портрет.",
-                )
-            except Exception as e:
-                logger.error(f"Ошибка генерации аватара: {e}")
+            # Сохраняем PNG
+            avatar_url = db.upload_photo_to_storage(tg_id, png_bytes, "avatar.png")
+            db.save_avatar_url(tg_id, avatar_url)
+
+            from aiogram.types import BufferedInputFile
+            await callback.message.answer_photo(
+                BufferedInputFile(png_bytes, filename="avatar.png"),
+                caption="Вот он — твой пиксельный двойник. Диагноз, не портрет.",
+            )
+        except Exception as e:
+            logger.error(f"Ошибка генерации аватара: {e}")
+            await callback.message.answer("Не удалось создать аватар, но вызов можно начать.")
 
         # Формируем текст
         wlist = "\n".join(
