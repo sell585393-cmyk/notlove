@@ -1,9 +1,12 @@
 """Конфигурация бота NOTLOVE.ME"""
 
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://wfkplqgufdaxnczvyhpn.supabase.co")
